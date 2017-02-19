@@ -1,5 +1,7 @@
 package wishlist.sync;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -11,15 +13,31 @@ public class SyncManager {
 	private Integer _numItems = 0;
 		
 	public void RunSync() {
+		
+		File cacheFolder = new File(System.getProperty("user.dir") + "\\cache\\");
+		if(!cacheFolder.exists()) {
+			if(!cacheFolder.mkdirs()) {
+				System.out.println("Unable to create cache folder");
+			}
+		}
+		
+		String cacheFilePathPattern = cacheFolder + "\\%1$s.json";
+		
 		System.out.println("RunSync");
 		_startTime = System.nanoTime();
-		ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 1);
+		
+		Integer numThreads = Runtime.getRuntime().availableProcessors() + 1;
+		System.out.println("Num Threads: " + numThreads.toString());
+		
+		ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 		Integer id = 0;
-		Integer maxId = 100;
+		Integer maxId = 5000;
 		while(id <= maxId) {
-			IncrementAndCheckWait();
-			executor.execute(new ItemSync(id));
+
+			//System.out.println(String.format(cacheFilePathPattern, id.toString()));
+			executor.execute(new ItemSync(id, String.format(cacheFilePathPattern, id.toString())));
 			id++;
+			IncrementAndCheckWait();
 		}
 		executor.shutdown();
 		while(!executor.isTerminated()) {
@@ -38,12 +56,18 @@ public class SyncManager {
 	
 	private void _checkBatchWait() {
 		_checkStartNewBatch();
-		//System.out.println("Items: " + _numItems.toString() + " vs " + _batchNumItemThreshold.toString());
-		//System.out.println("Time: " + _getBatchDifference().toString() + " vs " + _batchDurationThreshold.toString());
-		if(_numItems > _batchNumItemThreshold && _getBatchDifference() < _batchDurationThreshold) {
+		if(_numItems >= _batchNumItemThreshold && _getBatchDifference() < _batchDurationThreshold) {
 			System.out.println("Sleeping...");
 			try {
-				Thread.sleep(5000);
+				Long diff = (_startTime + _batchDurationThreshold) - System.nanoTime();
+				//System.out.println(TimeUnit.NANOSECONDS.toMillis(diff));
+				if(diff > 0) {
+					Long sleepCheck = System.nanoTime();
+					Thread.sleep(TimeUnit.NANOSECONDS.toMillis(diff));
+					
+					Long sleepDuration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - sleepCheck);
+					System.out.println("Slept for: " + sleepDuration);
+				}
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

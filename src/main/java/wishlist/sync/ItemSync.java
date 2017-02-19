@@ -1,6 +1,7 @@
 package wishlist.sync;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,13 +21,14 @@ import wishlist.sync.Item;
 public class ItemSync implements Runnable {
 	private Integer id;
 	private static String contentType = "item";
-	private static String filePath = "C:\\Users\\Justin\\Misc Code\\WoW Bucket List\\other\\data_cache_java\\%1$s.json";
+	private String cacheFilePath;
 	
-	public ItemSync(Integer id) {
+	public ItemSync(Integer id, String cacheFilePath) {
 		this.id = id;
+		this.cacheFilePath = cacheFilePath;
 	}
 	   
-    private static String ReadAll(Reader rd) throws IOException {
+    private String ReadAll(Reader rd) throws IOException {
     	StringBuilder sb = new StringBuilder();
     	int cp;
     	while((cp = rd.read()) != -1) {
@@ -35,14 +37,14 @@ public class ItemSync implements Runnable {
     	return sb.toString();
     }
     
-    private static void WriteFile(Integer id, String content) throws IOException {
-    	Path file = Paths.get(String.format(filePath, id.toString()));
+    private void WriteFile(Integer id, String content) throws IOException {
+    	Path file = Paths.get(cacheFilePath);
 		Files.write(file, Arrays.asList(content), Charset.forName("UTF-8"));
     }
 
 	public void run() {
 		
-		System.out.println("Syncing " + id.toString());
+		//System.out.println("Syncing " + id.toString());
 
     	String url = "https://us.api.battle.net/wow/" + contentType + "/" + id.toString() + "?apikey=***REMOVED***";
 
