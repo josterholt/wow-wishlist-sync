@@ -7,18 +7,17 @@ import java.util.concurrent.TimeUnit;
 public class SyncManager {
 	private Long _startTime;
 	private Long _batchDurationThreshold = TimeUnit.SECONDS.toNanos(1);
-	private Integer _batchNumItemThreshold = 2;
+	private Integer _batchNumItemThreshold = 100;
 	private Integer _numItems = 0;
 		
 	public void RunSync() {
 		System.out.println("RunSync");
 		_startTime = System.nanoTime();
-		ExecutorService executor = Executors.newFixedThreadPool(5);
+		ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 1);
 		Integer id = 0;
 		Integer maxId = 100;
 		while(id <= maxId) {
 			IncrementAndCheckWait();
-			System.out.println("Syncing " + id.toString());
 			executor.execute(new ItemSync(id));
 			id++;
 		}

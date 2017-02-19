@@ -1,6 +1,7 @@
 package wishlist.sync;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -40,9 +41,11 @@ public class ItemSync implements Runnable {
     }
 
 	public void run() {
+		
+		System.out.println("Syncing " + id.toString());
+
     	String url = "https://us.api.battle.net/wow/" + contentType + "/" + id.toString() + "?apikey=***REMOVED***";
-    	return;
-    	/*
+
     	InputStream is;
 		try {
 			is = new URL(url).openStream();
@@ -56,10 +59,11 @@ public class ItemSync implements Runnable {
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch(FileNotFoundException e) {
+			// Pass, should create empty file
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		*/		
+		}		
 	}
 }
