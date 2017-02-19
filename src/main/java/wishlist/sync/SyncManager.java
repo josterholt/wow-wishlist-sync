@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 public class SyncManager {
 	private Long _startTime;
-	private Long _batchDurationThreshold = 1000L;
+	private Long _batchDurationThreshold = TimeUnit.SECONDS.toNanos(1);
 	private Integer _batchNumItemThreshold = 2;
 	private Integer _numItems = 0;
 		
@@ -17,11 +17,10 @@ public class SyncManager {
 		Integer id = 0;
 		Integer maxId = 100;
 		while(id <= maxId) {
+			IncrementAndCheckWait();
 			System.out.println("Syncing " + id.toString());
 			executor.execute(new ItemSync(id));
 			id++;
-			
-			IncrementAndCheckWait();
 		}
 		executor.shutdown();
 		while(!executor.isTerminated()) {
@@ -54,13 +53,7 @@ public class SyncManager {
 	}
 	
 	private Long  _getBatchDifference() {
-	
-		System.out.println(_startTime);
-		System.out.println(System.nanoTime());
-		System.out.println(System.nanoTime() - _startTime);
-
-		System.out.println(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - _startTime));
-		return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - _startTime);
+			return System.nanoTime() - _startTime;
 	}
 	
 	public void IncrementAndCheckWait() {
