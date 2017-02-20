@@ -14,17 +14,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import wishlist.sync.Item;
 
 public class ItemSync implements Runnable {
-	private Integer id;
+	private AtomicInteger id;
+	private Integer maxRecords;
 	private static String contentType = "item";
 	private String cacheFilePath;
 	
-	public ItemSync(Integer id, String cacheFilePath) {
+	public ItemSync(AtomicInteger id, Integer maxRecords, String cacheFilePath) {
 		this.id = id;
+		this.maxRecords = maxRecords;
 		this.cacheFilePath = cacheFilePath;
 	}
 	   
@@ -37,15 +40,26 @@ public class ItemSync implements Runnable {
     	return sb.toString();
     }
     
-    private void WriteFile(Integer id, String content) throws IOException {
+    private void WriteFile(AtomicInteger id, String content) throws IOException {
     	Path file = Paths.get(cacheFilePath);
 		Files.write(file, Arrays.asList(content), Charset.forName("UTF-8"));
     }
 
 	public void run() {
-		
+		Integer current_id = id.incrementAndGet();
+		while(maxRecords < current_id) {
+			System.out.println(current_id);
+			try {
+				Thread.currentThread().sleep(2000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 		//System.out.println("Syncing " + id.toString());
-
+		
+		return;
+		/*
     	String url = "https://us.api.battle.net/wow/" + contentType + "/" + id.toString() + "?apikey=***REMOVED***";
 
     	InputStream is;
@@ -66,6 +80,7 @@ public class ItemSync implements Runnable {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}		
+		}
+		*/
 	}
 }
