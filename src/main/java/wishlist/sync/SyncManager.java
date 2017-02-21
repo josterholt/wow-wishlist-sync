@@ -12,16 +12,6 @@ public class SyncManager {
 	RequestLimitManager limitManager;
 	
 	public void RunSync() {
-		System.out.println(System.getProperty("user.dir") + "\\cache\\");
-		File cacheFolder = new File(System.getProperty("user.dir") + "\\cache\\");
-		if(!cacheFolder.exists()) {
-			if(!cacheFolder.mkdirs()) {
-				System.out.println("Unable to create cache folder");
-			}
-		}
-		
-		String cacheFilePathPattern = cacheFolder + "\\%1$s.json";
-		
 		System.out.println("RunSync");
 		
 		// Thread initialization
@@ -33,18 +23,21 @@ public class SyncManager {
 		// Initialize global vars
 		AtomicInteger id = new AtomicInteger(0);
 		RequestLimitManager.addLimit(new Limit(TimeUnit.SECONDS.toNanos(1), 100));
-		RequestLimitManager.addLimit(new Limit(TimeUnit.HOURS.toNanos(1), 300));
+		RequestLimitManager.addLimit(new Limit(TimeUnit.HOURS.toNanos(1), 36000));
 		
-		// Initialize start time for request limits		
-		Integer maxId = 36000;
+		
+		// Initialize start time for request limits
+		ItemSync.setStartId(36000);
+		ItemSync.setMaxRecords(72000); // Shouldn't need to do this
+		
 		for(int i = 0; i < numThreads; i++) {
 			System.out.println("Adding thread");
-			executor.execute(new ItemSync(id, maxId, cacheFilePathPattern));
+			executor.execute(new ItemSync());
 		}
 
-		while(id.get() <= maxId) {
+		while(id.get() <= ItemSync.getMaxRecords()) {
 			try {
-				Thread.sleep(1000000);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
