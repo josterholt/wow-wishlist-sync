@@ -1,38 +1,28 @@
 package wishlist.sync;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import wishlist.sync.Limit;
+
 
 public class RequestLimitManager {
-	public static AtomicLong _startTime = new AtomicLong(0);
-	public static Long _batchDurationThreshold = TimeUnit.SECONDS.toNanos(1);
-	public static Integer _batchNumItemThreshold = 100;
-	public static AtomicInteger _numItems = new AtomicInteger(0);
+	private static List<Limit> limits = new ArrayList<Limit>();
 	
-	public static void _checkStartNewBatch() {
-		if(_getBatchDifference() > _batchDurationThreshold) {
-			System.out.println("Resetting");
-			_startTime.set(System.nanoTime());
-			_numItems.set(0);
+	public static void addLimit(Limit limit) {
+		limits.add(limit);
+	}
+	
+	public static Long incrementAndCheckWait() {
+		Long wait_duration = 0L;
+		for(Limit limit : limits) {
+			Long tmp_duration = limit.IncrementAndWait();
+			if(tmp_duration > wait_duration) {
+				wait_duration = tmp_duration;
+			}
 		}
-	}
-	
-	private static Long _checkBatchWait() {
-		_checkStartNewBatch();
-		if(_numItems.get() >= _batchNumItemThreshold && _getBatchDifference() < _batchDurationThreshold) {
-			return (_startTime.get() + _batchDurationThreshold) - System.nanoTime();
-		}
-
-		return 0L;
-	}
-	
-	private static Long  _getBatchDifference() {
-			return System.nanoTime() - _startTime.get();
-	}
-	
-	public static Long IncrementAndCheckWait() {
-		 _numItems.incrementAndGet();
-		return _checkBatchWait();
+		return wait_duration;
 	}
 }

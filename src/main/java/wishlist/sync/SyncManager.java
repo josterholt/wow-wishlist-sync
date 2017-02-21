@@ -24,16 +24,19 @@ public class SyncManager {
 		
 		System.out.println("RunSync");
 		
+		// Thread initialization
 		Integer numThreads = Runtime.getRuntime().availableProcessors() + 1;
 		System.out.println("Num Threads: " + numThreads.toString());
 		
 		ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+		
+		// Initialize global vars
 		AtomicInteger id = new AtomicInteger(0);
+		RequestLimitManager.addLimit(new Limit(TimeUnit.SECONDS.toNanos(1), 100));
+		RequestLimitManager.addLimit(new Limit(TimeUnit.HOURS.toNanos(1), 300));
 		
-		// Initialize start time for request limits
-		RequestLimitManager._startTime.set(System.nanoTime());
-		
-		Integer maxId = 5000;
+		// Initialize start time for request limits		
+		Integer maxId = 36000;
 		for(int i = 0; i < numThreads; i++) {
 			System.out.println("Adding thread");
 			executor.execute(new ItemSync(id, maxId, cacheFilePathPattern));
@@ -41,14 +44,14 @@ public class SyncManager {
 
 		while(id.get() <= maxId) {
 			try {
-				RequestLimitManager._checkStartNewBatch();
-				Thread.currentThread().sleep(1000000);
+				Thread.sleep(1000000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 
+		System.out.println("Shutting down threads");
 		executor.shutdown();
 		while(!executor.isTerminated()) {
 			

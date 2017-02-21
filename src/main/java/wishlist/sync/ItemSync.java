@@ -49,11 +49,10 @@ public class ItemSync implements Runnable {
     
     private void _checkLimit() {
 		Long sleep_duration;    	
-		sleep_duration = limitManager.IncrementAndCheckWait();
+		sleep_duration = limitManager.incrementAndCheckWait();
 		if(sleep_duration > 0) {
 			try {
 				System.out.println(Thread.currentThread().getName() + " Sleeping for " + TimeUnit.NANOSECONDS.toMillis(sleep_duration));
-				//Thread.currentThread();
 				Thread.sleep(TimeUnit.NANOSECONDS.toMillis(sleep_duration));
 				System.out.println(Thread.currentThread().getName() + " woke up");
 			} catch (InterruptedException e) {
@@ -64,6 +63,9 @@ public class ItemSync implements Runnable {
     }
     
     private void SyncItem(Integer ItemId) {
+    	System.out.println("Sync item " + ItemId);
+    	return;
+    	/*
     	String url = "https://us.api.battle.net/wow/" + contentType + "/" + ItemId.toString() + "?apikey=***REMOVED***";
 
     	InputStream is;
@@ -85,6 +87,7 @@ public class ItemSync implements Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		*/
     }
 
 	public void run() {
