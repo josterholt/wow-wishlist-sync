@@ -13,12 +13,19 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mysql.cj.api.mysqla.result.Resultset;
+
 import wishlist.sync.Item;
 
 public class ItemSync implements Runnable {
@@ -147,5 +154,23 @@ public class ItemSync implements Runnable {
 
 		System.out.println("Exiting thread " + Thread.currentThread().getName());
 		return;
+	}
+	
+	private void insertRecord() {
+		/*
+		try {
+			Connection conn = null;
+			conn = DriverManager.getConnection("jdbc:mysql://ostwebdev.com:3306/ostwebde_wishlist?user=tmpuser&password=tmppass&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
+			PreparedStatement statement = conn.prepareStatement("SELECT * FROM test");
+			ResultSet results = statement.executeQuery();
+			results.next();
+
+			System.out.println(results.getInt(1));
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		*/
 	}
 }
