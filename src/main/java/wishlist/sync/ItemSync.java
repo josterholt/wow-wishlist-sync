@@ -74,9 +74,13 @@ public class ItemSync implements Runnable {
     	return sb.toString();
     }
     
-    private void _writeFile(Integer id, String content) throws IOException {
+    private void _writeFile(Integer id, String content) {
     	Path file = Paths.get(String.format(_cacheFilePathPattern, id));
-		Files.write(file, Arrays.asList(content), Charset.forName("UTF-8"));
+    	try {
+    		Files.write(file, Arrays.asList(content), Charset.forName("UTF-8"));	
+    	} catch(IOException e) {
+    		e.printStackTrace();
+    	}
     }
     
     private void _checkLimit() {
@@ -84,7 +88,7 @@ public class ItemSync implements Runnable {
 		sleep_duration = limitManager.incrementAndCheckWait();
 		if(sleep_duration > 0) {
 			try {
-				//System.out.println(Thread.currentThread().getName() + " Sleeping for " + TimeUnit.NANOSECONDS.toMillis(sleep_duration));
+				System.out.println(Thread.currentThread().getName() + " Sleeping for " + TimeUnit.NANOSECONDS.toMillis(sleep_duration));
 				Thread.sleep(TimeUnit.NANOSECONDS.toMillis(sleep_duration));
 				//System.out.println(Thread.currentThread().getName() + " woke up");
 			} catch (InterruptedException e) {
@@ -112,6 +116,7 @@ public class ItemSync implements Runnable {
 			e.printStackTrace();
 		} catch(FileNotFoundException e) {
 			// Pass, should create empty file
+			_writeFile(ItemId, "");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -132,7 +137,7 @@ public class ItemSync implements Runnable {
 
 		    	File cache_file = new File(String.format(_cacheFilePathPattern, current_id));
 		    	if(cache_file.exists() && _cacheFileExpiration.getTimeInMillis() > cache_file.lastModified()) {
-		    		System.out.println(current_id + " file is cached");
+		    		System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
 		    	} else {
 					System.out.println(Thread.currentThread().getName() + ": Sync ID " + current_id.toString());
 					SyncItem(current_id);

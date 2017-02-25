@@ -27,8 +27,8 @@ public class SyncManager {
 		
 		
 		// Initialize start time for request limits
-		ItemSync.setStartId(36000);
-		ItemSync.setMaxRecords(72000); // Shouldn't need to do this
+		ItemSync.setStartId(0);
+		ItemSync.setMaxRecords(200000); // Shouldn't need to do this
 		
 		for(int i = 0; i < numThreads; i++) {
 			System.out.println("Adding thread");
