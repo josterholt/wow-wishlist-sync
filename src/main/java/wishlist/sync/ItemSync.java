@@ -22,7 +22,10 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mysql.cj.api.mysqla.result.Resultset;
 
@@ -39,6 +42,11 @@ public class ItemSync implements Runnable {
 	private static String _cacheFilePathPattern;
 	private static Calendar _cacheFileExpiration;
 	
+	private Connection conn = null;
+	private String sql = "INSERT INTO items_new (name, description, summary, icon, wowId, requiredSkillRank, itemLevel, sellPrice, created, updated) VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE name = ?, description = ?, summary = ?, icon = ?, requiredSkillRank = ?, itemLevel = ?, sellPrice = ?, updated = NOW();";
+	private PreparedStatement statement = null;
+	
+	
 	public ItemSync() {
 		if(!_isInitialized) {
 			_cacheFolder = System.getProperty("user.dir") + "\\cache\\";
@@ -50,6 +58,14 @@ public class ItemSync implements Runnable {
 			_cacheFileExpiration = Calendar.getInstance();
 			_cacheFileExpiration.add(Calendar.DATE, 7);
 		}
+		
+		try {
+			conn = DriverManager.getConnection("jdbc:mysql://ubuntu:3306/wishlist?user=dbuser&password=dbuser&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
+			statement = conn.prepareStatement(sql);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
 	}
 	
 	public static void setStartId(Integer StartId) {
@@ -118,6 +134,7 @@ public class ItemSync implements Runnable {
 	    	System.out.println(item.name);
 
 	    	_writeFile(ItemId, json_string);
+			insertRecord(item);	    	
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -140,12 +157,27 @@ public class ItemSync implements Runnable {
 			if(current_id > _maxRecords) {
 				loop = false;
 			} else {
-				_checkLimit();
-
 		    	File cache_file = new File(String.format(_cacheFilePathPattern, current_id));
 		    	if(cache_file.exists() && _cacheFileExpiration.getTimeInMillis() > cache_file.lastModified()) {
 		    		System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
+		    		
+			    	try {
+				    	ObjectMapper mapper = new ObjectMapper();			    		
+						Item item = mapper.readValue(cache_file, Item.class);
+						insertRecord(item);
+					} catch (JsonParseException e) {
+						// TODO Auto-generated catch block
+						//e.printStackTrace();
+					} catch (JsonMappingException e) {
+						// TODO Auto-generated catch block
+						//e.printStackTrace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		    		
 		    	} else {
+					_checkLimit();		    		
 					System.out.println(Thread.currentThread().getName() + ": Sync ID " + current_id.toString());
 					SyncItem(current_id);
 		    	}
@@ -156,21 +188,36 @@ public class ItemSync implements Runnable {
 		return;
 	}
 	
-	private void insertRecord() {
-		/*
+	private void insertRecord(Item item) {
 		try {
-			Connection conn = null;
-			conn = DriverManager.getConnection("jdbc:mysql://ostwebdev.com:3306/ostwebde_wishlist?user=tmpuser&password=tmppass&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
-			PreparedStatement statement = conn.prepareStatement("SELECT * FROM test");
-			ResultSet results = statement.executeQuery();
-			results.next();
+			statement.setString(1,  item.name);
+			statement.setString(2, item.description);
+			statement.setString(3, "");
+			statement.setString(4, item.icon);
+			statement.setInt(5, item.id);
+			statement.setInt(6, item.requiredSkillRank);
+			statement.setInt(7, item.itemLevel);
+			statement.setInt(8, item.sellPrice);
+			statement.setString(9, item.name);
+			statement.setString(10,  item.description);
+			statement.setString(11,  "");
+			statement.setString(12,  item.icon);
+			statement.setInt(13, item.requiredSkillRank);
+			statement.setInt(14, item.itemLevel);
+			statement.setInt(15,  item.sellPrice);
+			
+			
+			int num_updated = statement.executeUpdate();
+			if(num_updated == 0) {
+				System.out.println("Record not 	updated");
+			} else {
+				System.out.println("Record updated");
+			}
 
-			System.out.println(results.getInt(1));
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		*/
 	}
 }
