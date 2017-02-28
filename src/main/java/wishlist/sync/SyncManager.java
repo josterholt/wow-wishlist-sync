@@ -1,12 +1,9 @@
 package wishlist.sync;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class SyncManager {
 	RequestLimitManager limitManager;
@@ -27,6 +24,7 @@ public class SyncManager {
 		
 		
 		// Initialize start time for request limits
+		ItemSync.initialize();
 		ItemSync.setStartId(0);
 		ItemSync.setMaxRecords(200000); // Shouldn't need to do this
 		

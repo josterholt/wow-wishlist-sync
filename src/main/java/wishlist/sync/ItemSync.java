@@ -1,14 +1,19 @@
 package wishlist.sync;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +25,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Properties;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -46,10 +53,12 @@ public class ItemSync implements Runnable {
 	private String sql = "INSERT INTO items_new (name, description, summary, icon, wowId, requiredSkillRank, itemLevel, sellPrice, created, updated) VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE name = ?, description = ?, summary = ?, icon = ?, requiredSkillRank = ?, itemLevel = ?, sellPrice = ?, updated = NOW();";
 	private PreparedStatement statement = null;
 	
+	private static Properties config;
+	
 	
 	public ItemSync() {
 		if(!_isInitialized) {
-			_cacheFolder = System.getProperty("user.dir") + "\\cache\\";
+			_cacheFolder = System.getProperty("user.home") + "\\cache\\";
 			File cacheFolder = new File(_cacheFolder);		
 			_cacheFilePathPattern = cacheFolder + "\\%1$s.json";
 			
@@ -65,7 +74,46 @@ public class ItemSync implements Runnable {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}		
+		}
+	}
+	
+	public static void initialize() {
+		File propertyFile = new File(System.getProperty("user.home") + "\\.wowsync");
+		
+		if(propertyFile.exists()) {
+			try(InputStream input = new FileInputStream(propertyFile)) {
+				config = new Properties();
+				config.load(input);
+				
+				System.out.println(config.getProperty("cacheDirectory"));
+				
+			} catch (IOException exception) {
+				exception.printStackTrace();
+			}
+		}
+		
+		try(OutputStream output = new FileOutputStream(propertyFile)) {
+			config = new Properties();
+			System.out.println("Enter cache folder (" + config.getProperty("cacheDirectory") + "):");
+
+			Scanner scannerName = new Scanner(System.in);
+			String folder = scannerName.next();
+
+			if(folder == "") {
+				folder = config.getProperty("cacheDirectory");
+			}
+			System.out.println(folder);
+			
+			if(folder == "") {
+				System.out.println("Invalid folder specified");
+				System.exit(-1);
+			}
+			
+			config.setProperty("cacheDirectory", folder);
+			config.store(output, null);
+		} catch(IOException exception) {
+			exception.printStackTrace();
+		}
 	}
 	
 	public static void setStartId(Integer StartId) {
@@ -149,7 +197,7 @@ public class ItemSync implements Runnable {
 
 	public void run() {
 		Integer current_id;
-		boolean loop = true;
+		boolean loop = false;
 		
 		while(loop) {
 			 current_id = id.getAndIncrement();
