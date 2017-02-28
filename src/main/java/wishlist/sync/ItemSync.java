@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Properties;
 import java.util.Scanner;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -38,7 +39,7 @@ import com.mysql.cj.api.mysqla.result.Resultset;
 
 import wishlist.sync.Item;
 
-public class ItemSync implements Runnable {
+public class ItemSync implements Callable {
 	private static boolean _isInitialized = false;
 	private static AtomicInteger id = new AtomicInteger(0);
 	private static Integer _maxRecords = 36000;
@@ -72,17 +73,16 @@ public class ItemSync implements Runnable {
 			conn = DriverManager.getConnection("jdbc:mysql://ubuntu:3306/wishlist?user=dbuser&password=dbuser&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
 			statement = conn.prepareStatement(sql);
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.println("Unable to connect");
 		}
 	}
 	
 	public static void initialize() {
 		File propertyFile = new File(System.getProperty("user.home") + "\\.wowsync");
+		Properties config = new Properties();
 		
 		if(propertyFile.exists()) {
 			try(InputStream input = new FileInputStream(propertyFile)) {
-				config = new Properties();
 				config.load(input);
 				
 				System.out.println(config.getProperty("cacheDirectory"));
@@ -93,7 +93,6 @@ public class ItemSync implements Runnable {
 		}
 		
 		try(OutputStream output = new FileOutputStream(propertyFile)) {
-			config = new Properties();
 			System.out.println("Enter cache folder (" + config.getProperty("cacheDirectory") + "):");
 
 			Scanner scannerName = new Scanner(System.in);
@@ -195,7 +194,7 @@ public class ItemSync implements Runnable {
 		}
     }
 
-	public void run() {
+	public Boolean call() {
 		Integer current_id;
 		boolean loop = false;
 		
@@ -233,7 +232,7 @@ public class ItemSync implements Runnable {
 		}
 
 		System.out.println("Exiting thread " + Thread.currentThread().getName());
-		return;
+		return true;
 	}
 	
 	private void insertRecord(Item item) {

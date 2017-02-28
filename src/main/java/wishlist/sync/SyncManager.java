@@ -1,5 +1,7 @@
 package wishlist.sync;
 
+import java.util.ArrayList;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -28,10 +30,21 @@ public class SyncManager {
 		ItemSync.setStartId(0);
 		ItemSync.setMaxRecords(200000); // Shouldn't need to do this
 		
+		ArrayList<Callable<ItemSync>> tasks = new ArrayList<Callable<ItemSync>>();
 		for(int i = 0; i < numThreads; i++) {
 			System.out.println("Adding thread");
-			executor.execute(new ItemSync());
+			//executor.execute(new ItemSync());
+			tasks.add(new ItemSync());
 		}
+		
+		try {
+			executor.invokeAll(tasks);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		/*
 
 		while(id.get() <= ItemSync.getMaxRecords()) {
 			try {
@@ -41,6 +54,7 @@ public class SyncManager {
 				e.printStackTrace();
 			}
 		}
+		*/
 
 		System.out.println("Shutting down threads");
 		executor.shutdown();
