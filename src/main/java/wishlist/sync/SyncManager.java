@@ -1,9 +1,11 @@
 package wishlist.sync;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -38,24 +40,27 @@ public class SyncManager {
 		}
 		
 		try {
-			executor.invokeAll(tasks);
+			List<Future<ItemSync>> futures = executor.invokeAll(tasks);
+
+			boolean loop = true;
+			while(loop) {
+				loop = false;
+				for(Future<ItemSync> future : futures) {
+					System.out.println(future.isDone());
+					if(!future.isDone()) {
+						loop = true;
+					}
+				}
+				
+				Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+			}
+			
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		/*
-
-		while(id.get() <= ItemSync.getMaxRecords()) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		*/
-
+				
+			
 		System.out.println("Shutting down threads");
 		executor.shutdown();
 		while(!executor.isTerminated()) {

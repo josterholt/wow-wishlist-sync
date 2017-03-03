@@ -58,17 +58,6 @@ public class ItemSync implements Callable {
 	
 	
 	public ItemSync() {
-		if(!_isInitialized) {
-			_cacheFolder = System.getProperty("user.home") + "\\cache\\";
-			File cacheFolder = new File(_cacheFolder);		
-			_cacheFilePathPattern = cacheFolder + "\\%1$s.json";
-			
-			initializeCacheFolder(cacheFolder);
-			
-			_cacheFileExpiration = Calendar.getInstance();
-			_cacheFileExpiration.add(Calendar.DATE, 7);
-		}
-		
 		try {
 			conn = DriverManager.getConnection("jdbc:mysql://ubuntu:3306/wishlist?user=dbuser&password=dbuser&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
 			statement = conn.prepareStatement(sql);
@@ -78,8 +67,9 @@ public class ItemSync implements Callable {
 	}
 	
 	public static void initialize() {
+		System.out.println(System.getProperty("user.home"));
 		File propertyFile = new File(System.getProperty("user.home") + "\\.wowsync");
-		Properties config = new Properties();
+		config = new Properties();
 		
 		if(propertyFile.exists()) {
 			try(InputStream input = new FileInputStream(propertyFile)) {
@@ -90,36 +80,47 @@ public class ItemSync implements Callable {
 			} catch (IOException exception) {
 				exception.printStackTrace();
 			}
+		} else {
+			try(OutputStream output = new FileOutputStream(propertyFile)) {
+				System.out.println("Enter cache folder (" + config.getProperty("cacheDirectory") + "):");
+	
+				Scanner scannerName = new Scanner(System.in);
+				scannerName.useDelimiter(System.getProperty("line.separator"));
+				String folder = scannerName.next();
+	
+				if(folder == "") {
+					folder = config.getProperty("cacheDirectory");
+				}
+				System.out.println(folder);
+				
+				if(folder == "") {
+					System.out.println("Invalid folder specified");
+					System.exit(-1);
+				}
+				
+				config.setProperty("cacheDirectory", folder);
+				config.store(output, null);
+			} catch(IOException exception) {
+				exception.printStackTrace();
+			}
 		}
+
+		_cacheFolder = config.getProperty("cacheDirectory");
+		File cacheFolder = new File(_cacheFolder);		
+		_cacheFilePathPattern = cacheFolder + "\\%1$s.json";
 		
-		try(OutputStream output = new FileOutputStream(propertyFile)) {
-			System.out.println("Enter cache folder (" + config.getProperty("cacheDirectory") + "):");
+		initializeCacheFolder(cacheFolder);
+		
+		_cacheFileExpiration = Calendar.getInstance();
+		_cacheFileExpiration.add(Calendar.DATE, 7);
 
-			Scanner scannerName = new Scanner(System.in);
-			String folder = scannerName.next();
-
-			if(folder == "") {
-				folder = config.getProperty("cacheDirectory");
-			}
-			System.out.println(folder);
-			
-			if(folder == "") {
-				System.out.println("Invalid folder specified");
-				System.exit(-1);
-			}
-			
-			config.setProperty("cacheDirectory", folder);
-			config.store(output, null);
-		} catch(IOException exception) {
-			exception.printStackTrace();
-		}
 	}
 	
 	public static void setStartId(Integer StartId) {
 		id.set(StartId);
 	}
 	
-	private void initializeCacheFolder(File cacheFolder) {
+	private static void initializeCacheFolder(File cacheFolder) {
 		if(!cacheFolder.exists()) {
 			if(!cacheFolder.mkdirs()) {
 				System.out.println("Unable to create cache folder");
@@ -196,15 +197,17 @@ public class ItemSync implements Callable {
 
 	public Boolean call() {
 		Integer current_id;
-		boolean loop = false;
+		boolean loop = true;
 		
 		while(loop) {
 			 current_id = id.getAndIncrement();
 
 			if(current_id > _maxRecords) {
+				System.out.println("blah");
 				loop = false;
 			} else {
 		    	File cache_file = new File(String.format(_cacheFilePathPattern, current_id));
+		    	System.out.println(cache_file.getPath());
 		    	if(cache_file.exists() && _cacheFileExpiration.getTimeInMillis() > cache_file.lastModified()) {
 		    		System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
 		    		
