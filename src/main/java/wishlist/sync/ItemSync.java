@@ -56,6 +56,8 @@ public class ItemSync implements Callable {
 	
 	private static Properties config;
 	
+	private KeyStoreCache cache;
+	
 	
 	public ItemSync() {
 		try {
@@ -64,6 +66,13 @@ public class ItemSync implements Callable {
 		} catch (SQLException e) {
 			System.out.println("Unable to connect");
 		}
+		
+		cache = new KeyStoreCache(_cacheFolder);
+	}
+	
+	@Override
+	public void finalize() {
+		cache.close();
 	}
 	
 	private static String promptWithQuestion(String question, String default_answer) {
@@ -114,14 +123,6 @@ public class ItemSync implements Callable {
 				setConfigFromPrompt("db_name", "Enter database name", config.getProperty("cacheDirectory", ""));
 				setConfigFromPrompt("db_user", "Enter database user", config.getProperty("cacheDirectory", ""));
 				setConfigFromPrompt("db_password", "Enter database password", config.getProperty("cacheDirectory", ""));
-				
-				
-				
-				
-				
-				
-				
-	
 				
 				if(config.getProperty("cacheDirectory") == "") {
 					System.out.println("Invalid folder specified");
@@ -174,13 +175,16 @@ public class ItemSync implements Callable {
     	return sb.toString();
     }
     
-    private void _writeFile(Integer id, String content) {
+    private void _writeCache(Integer id, String content) {
+		cache.put(id, content);
+		/*
     	Path file = Paths.get(String.format(_cacheFilePathPattern, id));
     	try {
     		Files.write(file, Arrays.asList(content), Charset.forName("UTF-8"));	
     	} catch(IOException e) {
     		e.printStackTrace();
     	}
+    	*/
     }
     
     private void _checkLimit() {
@@ -210,14 +214,14 @@ public class ItemSync implements Callable {
 	    	Item item = mapper.readValue(json_string,  Item.class);
 	    	System.out.println(item.name);
 
-	    	_writeFile(ItemId, json_string);
+	    	_writeCache(ItemId, json_string);
 			insertRecord(item);	    	
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch(FileNotFoundException e) {
 			// Pass, should create empty file
-			_writeFile(ItemId, "");
+			_writeCache(ItemId, "");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -240,15 +244,14 @@ public class ItemSync implements Callable {
 			if(current_id > _maxRecords) {
 				System.out.println("blah");
 				loop = false;
-			} else {
-		    	File cache_file = new File(String.format(_cacheFilePathPattern, current_id));
-		    	System.out.println(cache_file.getPath());
-		    	if(cache_file.exists() && _cacheFileExpiration.getTimeInMillis() > cache_file.lastModified()) {
+			} else {			
+				String cache_content = cache.get(current_id);
+				if(cache_content != null) {
 		    		System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
 		    		
 			    	try {
-				    	ObjectMapper mapper = new ObjectMapper();			    		
-						Item item = mapper.readValue(cache_file, Item.class);
+				    	ObjectMapper mapper = new ObjectMapper();
+						Item item = mapper.readValue(cache_content.toString(), Item.class);
 						insertRecord(item);
 					} catch (JsonParseException e) {
 						// TODO Auto-generated catch block
