@@ -51,7 +51,7 @@ public class ItemSync implements Callable {
 	private static Calendar _cacheFileExpiration;
 	
 	private Connection conn = null;
-	private String sql = "INSERT INTO items_new (name, description, summary, icon, wowId, requiredSkillRank, itemLevel, sellPrice, created, updated) VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE name = ?, description = ?, summary = ?, icon = ?, requiredSkillRank = ?, itemLevel = ?, sellPrice = ?, updated = NOW();";
+	private String sql = "INSERT INTO items (name, description, summary, icon, wowId, requiredSkillRank, itemLevel, sellPrice, created, updated) VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE name = ?, description = ?, summary = ?, icon = ?, requiredSkillRank = ?, itemLevel = ?, sellPrice = ?, updated = NOW();";
 	private PreparedStatement statement = null;
 	
 	private static Properties config;
@@ -59,10 +59,35 @@ public class ItemSync implements Callable {
 	
 	public ItemSync() {
 		try {
-			conn = DriverManager.getConnection("jdbc:mysql://ubuntu:3306/wishlist?user=dbuser&password=dbuser&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
+			conn = DriverManager.getConnection("jdbc:mysql://" + config.getProperty("db_host", "localhost") + ":" + config.getProperty("db_port", "3306") + "/" + config.getProperty("db_name", "") + "?user=" + config.getProperty("db_user", "") + "&password=" + config.getProperty("db_password", "") + "&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
 			statement = conn.prepareStatement(sql);
 		} catch (SQLException e) {
 			System.out.println("Unable to connect");
+		}
+	}
+	
+	private static String promptWithQuestion(String question, String default_answer) {
+		String full_prompt;
+		if(default_answer != "" && default_answer != null) {
+			full_prompt = question + "(" + default_answer + "):";
+		} else {
+			full_prompt = question + ":";
+		}
+		
+		System.out.println(full_prompt);
+		
+		Scanner scannerName = new Scanner(System.in);
+		scannerName.useDelimiter(System.getProperty("line.separator"));
+		return scannerName.next();
+	}
+	
+	private static void setConfigFromPrompt(String key, String question, String default_answer) {
+		String answer = promptWithQuestion(question, default_answer);
+			
+		if(answer == "" || answer == null) {
+			config.setProperty(key, default_answer);
+		} else {
+			config.setProperty(key, answer);
 		}
 	}
 	
@@ -82,23 +107,27 @@ public class ItemSync implements Callable {
 			}
 		} else {
 			try(OutputStream output = new FileOutputStream(propertyFile)) {
-				System.out.println("Enter cache folder (" + config.getProperty("cacheDirectory") + "):");
-	
-				Scanner scannerName = new Scanner(System.in);
-				scannerName.useDelimiter(System.getProperty("line.separator"));
-				String folder = scannerName.next();
-	
-				if(folder == "") {
-					folder = config.getProperty("cacheDirectory");
-				}
-				System.out.println(folder);
+				setConfigFromPrompt("cacheDirectory", "Enter cache folder", config.getProperty("cacheDirectory", ""));
+				setConfigFromPrompt("db_host", "Enter database host", config.getProperty("cacheDirectory", ""));
 				
-				if(folder == "") {
+				setConfigFromPrompt("db_port", "Enter database port", config.getProperty("cacheDirectory", ""));
+				setConfigFromPrompt("db_name", "Enter database name", config.getProperty("cacheDirectory", ""));
+				setConfigFromPrompt("db_user", "Enter database user", config.getProperty("cacheDirectory", ""));
+				setConfigFromPrompt("db_password", "Enter database password", config.getProperty("cacheDirectory", ""));
+				
+				
+				
+				
+				
+				
+				
+	
+				
+				if(config.getProperty("cacheDirectory") == "") {
 					System.out.println("Invalid folder specified");
 					System.exit(-1);
 				}
-				
-				config.setProperty("cacheDirectory", folder);
+
 				config.store(output, null);
 			} catch(IOException exception) {
 				exception.printStackTrace();
@@ -199,6 +228,12 @@ public class ItemSync implements Callable {
 		Integer current_id;
 		boolean loop = true;
 		
+		try {
+			conn.setAutoCommit(false);
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		while(loop) {
 			 current_id = id.getAndIncrement();
 
@@ -232,6 +267,13 @@ public class ItemSync implements Callable {
 					SyncItem(current_id);
 		    	}
 			}
+		}
+		
+		try {
+			conn.commit();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
 		System.out.println("Exiting thread " + Thread.currentThread().getName());
