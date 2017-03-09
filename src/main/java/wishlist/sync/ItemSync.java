@@ -51,7 +51,117 @@ public class ItemSync implements Callable {
 	private static Calendar _cacheFileExpiration;
 	
 	private Connection conn = null;
-	private String sql = "INSERT INTO items (name, description, summary, icon, wowId, requiredSkillRank, itemLevel, sellPrice, created, updated) VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE name = ?, description = ?, summary = ?, icon = ?, requiredSkillRank = ?, itemLevel = ?, sellPrice = ?, updated = NOW();";
+	private String sql = "INSERT INTO items ("
+			+ "name,"
+			+ "description,"
+			+ "summary,"
+			+ "icon,"
+			+ "wowId,"
+			+ "stackable,"
+			+ "itemBind,"
+			+ "buyPrice,"
+			+ "itemClass,"
+			+ "itemSubClass,"
+			+ "containerSlots,"
+			+ "inventoryType,"
+			+ "equippable,"
+			+ "itemLevel,"
+			+ "maxCount,"
+			+ "maxDurability,"
+			+ "minFactionId,"
+			+ "minReputation,"
+			+ "quality,"
+			+ "sellPrice,"
+			+ "requiredSkill,"
+			+ "requiredLevel,"
+			+ "requiredSkillRank,"
+			+ "baseArmor,"
+			+ "hasSockets,"
+			+ "isAuctionable,"
+			+ "armor,"
+			+ "displayInfoId,"
+			+ "nameDescription,"
+			+ "nameDescriptionColor,"
+			+ "upgradable,"
+			+ "heroicTooltip,"
+			+ "context,"
+			+ "artifactId,"
+			+ "created,"
+			+ "updated"
+			+ ") "
+			+ "VALUES("
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"			
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"			
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"			
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"			
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "NOW(),"
+			+ "NOW()"
+			+ ")"
+			+ "ON DUPLICATE KEY UPDATE "
+			+ "name = ?, "
+			+ "description = ?, "
+			+ "summary = ?, "
+			+ "icon = ?, "
+			+ "stackable = ?,"
+			+ "itemBind = ?,"
+			+ "buyPrice = ?,"
+			+ "itemClass = ?,"
+			+ "itemSubClass = ?,"
+			+ "containerSlots = ?,"
+			+ "inventoryType = ?,"
+			+ "equippable = ?,"
+			+ "itemLevel = ?,"
+			+ "maxCount = ?,"
+			+ "maxDurability = ?,"
+			+ "minFactionId = ?,"
+			+ "minReputation = ?,"
+			+ "quality = ?,"
+			+ "sellPrice = ?,"
+			+ "requiredSkill = ?,"
+			+ "requiredLevel = ?,"
+			+ "requiredSkillRank = ?,"
+			+ "baseArmor = ?,"
+			+ "hasSockets = ?,"
+			+ "isAuctionable = ?,"
+			+ "armor = ?,"
+			+ "displayInfoId = ?,"
+			+ "nameDescription = ?,"
+			+ "nameDescriptionColor = ?,"
+			+ "upgradable = ?,"
+			+ "heroicTooltip = ?,"
+			+ "context = ?,"
+			+ "artifactId = ?,"
+			+ "updated = NOW();";
 	private PreparedStatement statement = null;
 	
 	private static Properties config;
@@ -285,22 +395,77 @@ public class ItemSync implements Callable {
 	
 	private void insertRecord(Item item) {
 		try {
+			// Insert
 			statement.setString(1,  item.name);
 			statement.setString(2, item.description);
 			statement.setString(3, "");
 			statement.setString(4, item.icon);
 			statement.setInt(5, item.id);
-			statement.setInt(6, item.requiredSkillRank);
-			statement.setInt(7, item.itemLevel);
-			statement.setInt(8, item.sellPrice);
-			statement.setString(9, item.name);
-			statement.setString(10,  item.description);
-			statement.setString(11,  "");
-			statement.setString(12,  item.icon);
-			statement.setInt(13, item.requiredSkillRank);
+			statement.setBoolean(6,  item.stackable);
+			statement.setBoolean(7, item.itemBind);
+			statement.setInt(8, item.buyPrice);
+			statement.setInt(9, item.itemClass);
+			statement.setInt(10,  item.itemSubClass);
+			statement.setInt(11,  item.containerSlots);
+			statement.setInt(12, item.inventoryType);
+			statement.setBoolean(13,  item.equippable);
 			statement.setInt(14, item.itemLevel);
-			statement.setInt(15,  item.sellPrice);
+			statement.setInt(15, item.maxCount);
+			statement.setInt(16, item.maxDurability);
+			statement.setInt(17, item.minFactionId);
+			statement.setInt(18,  item.minReputation);
+			statement.setInt(19, item.quality);
+			statement.setInt(20, item.sellPrice);
+			statement.setInt(21,  item.requiredSkill);
+			statement.setInt(22,  item.requiredLevel);
+			statement.setInt(23, item.requiredSkillRank);
+			statement.setInt(24, item.baseArmor);
+			statement.setBoolean(25, item.hasSockets);
+			statement.setBoolean(26,  item.isAuctionable);
+			statement.setInt(27,  item.armor);
+			statement.setInt(28,  item.displayInfoId);
+			statement.setString(29, item.nameDescription);
+			statement.setString(30,  item.nameDescriptionColor);
+			statement.setBoolean(31,  item.upgradable);
+			statement.setBoolean(32, item.heroicTooltip);
+			statement.setString(33,  item.context);
+			statement.setInt(34, item.artifactId);
 			
+			// Update
+			statement.setString(35,  item.name);
+			statement.setString(36, item.description);
+			statement.setString(37, "");
+			statement.setString(38, item.icon);
+			statement.setBoolean(39,  item.stackable);
+			statement.setBoolean(40, item.itemBind);
+			statement.setInt(41, item.buyPrice);
+			statement.setInt(42, item.itemClass);
+			statement.setInt(43,  item.itemSubClass);
+			statement.setInt(44,  item.containerSlots);
+			statement.setInt(45, item.inventoryType);
+			statement.setBoolean(46,  item.equippable);
+			statement.setInt(47, item.itemLevel);
+			statement.setInt(48, item.maxCount);
+			statement.setInt(49, item.maxDurability);
+			statement.setInt(50, item.minFactionId);
+			statement.setInt(51,  item.minReputation);
+			statement.setInt(52, item.quality);
+			statement.setInt(53, item.sellPrice);
+			statement.setInt(54,  item.requiredSkill);
+			statement.setInt(55,  item.requiredLevel);
+			statement.setInt(56, item.requiredSkillRank);
+			statement.setInt(57, item.baseArmor);
+			statement.setBoolean(58, item.hasSockets);
+			statement.setBoolean(59,  item.isAuctionable);
+			statement.setInt(60,  item.armor);
+			statement.setInt(61,  item.displayInfoId);
+			statement.setString(62, item.nameDescription);
+			statement.setString(63,  item.nameDescriptionColor);
+			statement.setBoolean(64,  item.upgradable);
+			statement.setBoolean(65, item.heroicTooltip);
+			statement.setString(66,  item.context);
+			statement.setInt(67, item.artifactId);
+
 			
 			int num_updated = statement.executeUpdate();
 			if(num_updated == 0) {

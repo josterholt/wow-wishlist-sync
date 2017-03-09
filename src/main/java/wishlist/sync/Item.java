@@ -22,7 +22,7 @@ public class Item {
 	public String name;
 	public String icon;
 	public Boolean stackable;
-	public Integer itemBind;
+	public boolean itemBind;
 	
 	//List<String> bonusStats;
 	//List<String> itemSpells;

@@ -17,7 +17,7 @@ public class KeyStoreCache {
 			try {
 				conn = DriverManager.getConnection("jdbc:sqlite:" + cacheFolder + "cache.db");
 				Statement statement = conn.createStatement();
-				statement.executeUpdate("CREATE TABLE IF NOT EXISTS cache (id integer primary key, value varchar(255))");
+				statement.executeUpdate("CREATE TABLE IF NOT EXISTS cache (id integer primary key, value varchar(255), modified integer, created integer)");
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -28,9 +28,10 @@ public class KeyStoreCache {
 	public void put(Integer id, String content) {
 		PreparedStatement statement;
 		try {
-			statement = conn.prepareStatement("INSERT INTO cache (id, value) VALUES(?, ?)");
+			statement = conn.prepareStatement("INSERT OR REPLACE INTO cache (id, value, modified, created) VALUES(?, ?, (SELECT strftime('%s', 'now')), COALESCE((SELECT created FROM cache WHERE id = ?), (SELECT strftime('%s', 'now'))))");
 			statement.setInt(1, id);
 			statement.setString(2,  content);
+			statement.setInt(3, id);
 			statement.executeUpdate();			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -41,7 +42,7 @@ public class KeyStoreCache {
 	public String get(Integer id) {
 		PreparedStatement statement;
 		try {
-			statement = conn.prepareStatement("SELECT id, value FROM cache WHERE id = ?");
+			statement = conn.prepareStatement("SELECT id, value FROM cache WHERE id = ? AND modified IS NOT NULL");
 			statement.setInt(1,  id);
 			ResultSet results = statement.executeQuery();
 			if(results.next()) {
