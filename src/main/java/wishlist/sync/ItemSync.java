@@ -321,8 +321,8 @@ public class ItemSync implements Callable {
 	    	BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
 	    	String json_string = _readAll(rd);
 	    	ObjectMapper mapper = new ObjectMapper();
+	    	System.out.println(json_string);
 	    	Item item = mapper.readValue(json_string,  Item.class);
-	    	System.out.println(item.name);
 
 	    	_writeCache(ItemId, json_string);
 			insertRecord(item);	    	
@@ -357,7 +357,7 @@ public class ItemSync implements Callable {
 			} else {			
 				String cache_content = cache.get(current_id);
 				if(cache_content != null) {
-		    		System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
+		    		//System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
 		    		
 			    	try {
 				    	ObjectMapper mapper = new ObjectMapper();
@@ -471,9 +471,9 @@ public class ItemSync implements Callable {
 			if(num_updated == 0) {
 				System.out.println("Record not 	updated");
 			} else {
-				System.out.println("Record updated");
+				//System.out.println("Record updated");
 			}
-
+			conn.commit();
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
