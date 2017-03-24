@@ -317,14 +317,20 @@ public class ItemSync implements Callable {
 
     	InputStream is;
 		try {
+			System.out.println(Thread.currentThread().getName() + ": Opening API URL");
+			long startTime = System.currentTimeMillis();
 			is = new URL(url).openStream();
 	    	BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
 	    	String json_string = _readAll(rd);
 	    	ObjectMapper mapper = new ObjectMapper();
-	    	System.out.println(json_string);
+	    	//System.out.println(json_string);
 	    	Item item = mapper.readValue(json_string,  Item.class);
-
+	    	System.out.println(Thread.currentThread().getName() + ": Finished API URL. " + (System.currentTimeMillis() - startTime));
+	    	
+	    	System.out.println(Thread.currentThread().getName() + ": Writing to cache");
+	    	startTime = System.currentTimeMillis();
 	    	_writeCache(ItemId, json_string);
+	    	System.out.println(Thread.currentThread().getName() + ": Finished writing to cache: " + (System.currentTimeMillis() - startTime));
 			insertRecord(item);	    	
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
@@ -348,31 +354,55 @@ public class ItemSync implements Callable {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+		
+		long globalStartTime = System.currentTimeMillis();
+		int numRecordsProcessed = 0;
+		int numMisses = 0;
+		
 		while(loop) {
 			 current_id = id.getAndIncrement();
 
 			if(current_id > _maxRecords) {
-				System.out.println("blah");
+				System.out.println("Max records hit (" + _maxRecords + ")");
 				loop = false;
 			} else {			
 				String cache_content = cache.get(current_id);
 				if(cache_content != null) {
 		    		//System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
-		    		
+		    		//System.out.println(Thread.currentThread().getName() + ": cache file " + current_id);
+		    		long startTime = System.currentTimeMillis();
 			    	try {
 				    	ObjectMapper mapper = new ObjectMapper();
 						Item item = mapper.readValue(cache_content.toString(), Item.class);
 						insertRecord(item);
+						
+				    	numRecordsProcessed++;
+				    	long timeElapsedInMili = (System.currentTimeMillis() - globalStartTime);
+				    	long globalTimeElapsed = TimeUnit.MILLISECONDS.toSeconds(timeElapsedInMili);
+
+				    	if(globalTimeElapsed >= 60) {
+				    		//System.out.println("AVERAGE: " + (numRecordsProcessed / globalTimeElapsed) + "(" + numRecordsProcessed + "/" + numMisses + ")");
+				    		//System.out.println("Item Num: " + item.id);
+				    		globalStartTime = System.currentTimeMillis();
+				    		numRecordsProcessed = 0;
+				    		numMisses = 0;
+				    	}						
 					} catch (JsonParseException e) {
 						// TODO Auto-generated catch block
 						//e.printStackTrace();
+						numMisses++;
 					} catch (JsonMappingException e) {
 						// TODO Auto-generated catch block
 						//e.printStackTrace();
+						numMisses++;
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
+						numMisses++;
 					}
+			    	//System.out.println(Thread.currentThread().getName() + ": end cache file parsing: " + (System.currentTimeMillis() - startTime));
+			    	//if(numRecordsProcessed % 100 == 0) {
+			    	//}
 		    		
 		    	} else {
 					_checkLimit();		    		
@@ -380,6 +410,7 @@ public class ItemSync implements Callable {
 					SyncItem(current_id);
 		    	}
 			}
+			
 		}
 		
 		try {
