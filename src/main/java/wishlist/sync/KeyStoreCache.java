@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Calendar;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,6 +24,7 @@ public class KeyStoreCache {
 	private static Long _globalQueryTimeElapsed = 0L;
 	private static Long _globalTimeMili;
 	private PreparedStatement _statement;
+	private PreparedStatement _updateStatement;			
 	
 	private static final ReentrantLock dbLock = new ReentrantLock(true);
 
@@ -56,15 +58,7 @@ public class KeyStoreCache {
 	}	
 	
 	private boolean _openConnection() {
-		try {
-			SQLiteConfig config = new SQLiteConfig();
-//			config.setOpenMode(SQLiteOpenMode.READWRITE);
-//			config.setOpenMode(SQLiteOpenMode.CREATE);
-//			config.setOpenMode(SQLiteOpenMode.NOMUTEX);
-//			config.setPragma(SQLiteConfig.Pragma.SYNCHRONOUS, "0");
-//			config.setCacheSize(0);
-//			config.setSharedCache(false);
-			
+		try {	
 			_conn = DriverManager.getConnection("jdbc:sqlite:" + _cacheFolder + "cache.db");
 		
 
@@ -75,7 +69,8 @@ public class KeyStoreCache {
 			if(_conn.isClosed()) {
 				return false;
 			}	
-			_statement = _conn.prepareStatement("SELECT id, value FROM cache WHERE id = ? AND modified IS NOT NULL");
+			_statement = _conn.prepareStatement("SELECT id, value FROM cache WHERE id = ? AND modified IS NOT NULL AND modified > ?");
+			_updateStatement = _conn.prepareStatement("INSERT OR REPLACE INTO cache (id, value, modified, created) VALUES(?, ?, (SELECT strftime('%s', 'now')), COALESCE((SELECT created FROM cache WHERE id = ?), (SELECT strftime('%s', 'now'))))");
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -101,16 +96,17 @@ public class KeyStoreCache {
 	
 	public void put(Integer id, String content) {
 		long startTime = System.currentTimeMillis();
-		_checkAndReconnect();
 
-		try {
-			PreparedStatement statement;			
-			statement = _conn.prepareStatement("INSERT OR REPLACE INTO cache (id, value, modified, created) VALUES(?, ?, (SELECT strftime('%s', 'now')), COALESCE((SELECT created FROM cache WHERE id = ?), (SELECT strftime('%s', 'now'))))");
-			statement.setInt(1, id);
-			statement.setString(2,  content);
-			statement.setInt(3, id);
-			statement.executeUpdate();	
+		try(DBLockClosable dblc = lockDB()) {
+		//try {
+			_checkAndReconnect();
+			_updateStatement.clearParameters();
+			_updateStatement.setInt(1, id);
+			_updateStatement.setString(2,  content);
+			_updateStatement.setInt(3, id);
+			_updateStatement.executeUpdate();	
 			System.out.println("Set Elapsed: " + (System.currentTimeMillis() - startTime));
+			_conn.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -120,23 +116,26 @@ public class KeyStoreCache {
 	public String get(Integer id) {
 		//System.out.println("Getting something");
 		Long start_time = System.currentTimeMillis();
-		//try(DBLockClosable dblc = lockDB()) {
-		try {
+		try(DBLockClosable dblc = lockDB()) {
+		//try {
 			_checkAndReconnect();
+			
+			Calendar cal = Calendar.getInstance();
+			cal.add(Calendar.DAY_OF_YEAR, -7);
+			long cache_expiration = TimeUnit.MILLISECONDS.toSeconds(cal.getTimeInMillis());
+			//System.out.println(cache_expiration);
 			
 			_statement.clearParameters();
 			_statement.setInt(1,  id);
+			_statement.setLong(2, cache_expiration);
 			
 			ResultSet results = _statement.executeQuery();
 
 			String value = null;
 			if(results.next()) {
-		    	value = results.getString("value");
-		    	//System.out.println("Closing connection");
-		    	//_conn.close();
-				 				
+		    	value = results.getString("value");				 				
 			}
-			//_conn.close();
+			_conn.close();
 			
 			long _queryTimeElapsedMili = System.currentTimeMillis() - start_time;
 			_globalQueryTimeElapsed += _queryTimeElapsedMili;
