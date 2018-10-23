@@ -2,6 +2,7 @@ package wishlist.sync;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 class ItemSource {
@@ -13,6 +14,21 @@ class BonusSummary {
 	List<String> defaultBonusLists;
 	List<String> chanceBonusLists;
 	List<String> bonusChances;
+}
+
+class DamageClass {	
+	public Integer min;
+	public Integer max;
+	public Integer exactMin;
+	public Integer exactMax;
+}
+
+
+class WeaponInfo {	
+	public DamageClass damage;
+	public Integer weaponSpeed;
+	public Float dps;
+	
 }
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -31,6 +47,15 @@ public class Item {
 	public Integer itemClass;
 	public Integer itemSubClass;
 	public Integer containerSlots;
+	
+	//@JsonIgnore
+	public WeaponInfo weaponInfo;
+//	public Integer weaponinfoDamageMin;
+//	public Integer weaponinfoDamageMax;
+//	public Integer weaponinfoDamageExactMin;
+//	public Integer weaponinfoDamageExactMax;
+//	public Integer weaponinfoWeaponSpeed;
+//	public Float weaponinfoDPS;
 	public Integer inventoryType;
 	public Boolean equippable;
 	public Integer itemLevel;

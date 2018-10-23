@@ -63,6 +63,12 @@ public class ItemSync implements Callable {
 			+ "itemClass,"
 			+ "itemSubClass,"
 			+ "containerSlots,"
+			+ "weaponinfoDamageMin,"
+			+ "weaponinfoDamageMax,"
+			+ "weaponinfoDamageExactMin,"
+			+ "weaponinfoDamageExactMax,"
+			+ "weaponinfoWeaponSpeed,"
+			+ "weaponinfoDPS,"			
 			+ "inventoryType,"
 			+ "equippable,"
 			+ "itemLevel,"
@@ -90,6 +96,12 @@ public class ItemSync implements Callable {
 			+ "updated"
 			+ ") "
 			+ "VALUES("
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
+			+ "?,"
 			+ "?,"
 			+ "?,"
 			+ "?,"
@@ -138,6 +150,12 @@ public class ItemSync implements Callable {
 			+ "itemClass = ?,"
 			+ "itemSubClass = ?,"
 			+ "containerSlots = ?,"
+			+ "weaponinfoDamageMin = ?,"
+			+ "weaponinfoDamageMax = ?,"
+			+ "weaponinfoDamageExactMin = ?,"
+			+ "weaponinfoDamageExactMax = ?,"
+			+ "weaponinfoWeaponSpeed = ?,"
+			+ "weaponinfoDPS = ?,"			
 			+ "inventoryType = ?,"
 			+ "equippable = ?,"
 			+ "itemLevel = ?,"
@@ -315,23 +333,42 @@ public class ItemSync implements Callable {
     private void SyncItem(Integer ItemId) {
     	String url = "https://us.api.battle.net/wow/" + contentType + "/" + ItemId.toString() + "?apikey=***REMOVED***";
 
-    	InputStream is;
 		try {
+			/**
+			 * Grab JSON from URL
+			 */
+	    	InputStream is;
 			System.out.println(Thread.currentThread().getName() + ": Opening API URL");
 			long startTime = System.currentTimeMillis();
 			is = new URL(url).openStream();
+			//new URL(url).openConnection().getContent()
+
+			System.out.println(Thread.currentThread().getName() + ": Reading contents");
 	    	BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
 	    	String json_string = _readAll(rd);
-	    	ObjectMapper mapper = new ObjectMapper();
-	    	//System.out.println(json_string);
-	    	Item item = mapper.readValue(json_string,  Item.class);
-	    	System.out.println(Thread.currentThread().getName() + ": Finished API URL. " + (System.currentTimeMillis() - startTime));
+	    	System.out.println(Thread.currentThread().getName() + ": Content read");
 	    	
-	    	System.out.println(Thread.currentThread().getName() + ": Writing to cache");
+	    	/**
+	    	 * Store JSON in cache
+	    	 */
 	    	startTime = System.currentTimeMillis();
 	    	_writeCache(ItemId, json_string);
 	    	System.out.println(Thread.currentThread().getName() + ": Finished writing to cache: " + (System.currentTimeMillis() - startTime));
-			insertRecord(item);	    	
+	    	
+	    	/**
+	    	 * Deserialize JSON into object
+	    	 */
+	    	ObjectMapper mapper = new ObjectMapper();
+	    	Item item = mapper.readValue(json_string,  Item.class);
+	    	System.out.println(Thread.currentThread().getName() + ": Finished API URL. " + (System.currentTimeMillis() - startTime));	    	
+	    	System.out.println(Thread.currentThread().getName() + ": Writing to cache");
+	    	
+	    	/**
+	    	 * Insert record into main database
+	    	 */
+	    	System.out.println(Thread.currentThread().getName() + ": Inserting record into database");
+			insertRecord(item);
+			System.out.println(Thread.currentThread().getName() + ": Record inserted into database");
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -344,6 +381,12 @@ public class ItemSync implements Callable {
 		}
     }
 
+    /**
+     * Entry point for Callable
+     * Runs through IDs and adds to main database
+     * If ID does not exist in cache, a fetch is made against Blizzard API, content is parsed and upserted into main database
+     * If ID exists in cache, cached content is parsed and upserted into main database
+     */
 	public Boolean call() {
 		Integer current_id;
 		boolean loop = true;
@@ -365,17 +408,21 @@ public class ItemSync implements Callable {
 			if(current_id > _maxRecords) {
 				System.out.println("Max records hit (" + _maxRecords + ")");
 				loop = false;
-			} else {			
+			} else {
+				System.out.println(Thread.currentThread().getName() + ": Processing " + current_id);
 				String cache_content = cache.get(current_id);
 				if(cache_content != null) {
 		    		//System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
 		    		//System.out.println(Thread.currentThread().getName() + ": cache file " + current_id);
 		    		long startTime = System.currentTimeMillis();
 			    	try {
+			    		//System.out.println(cache_content.toString());
 				    	ObjectMapper mapper = new ObjectMapper();
-						Item item = mapper.readValue(cache_content.toString(), Item.class);
-						insertRecord(item);
-						
+				    	String json_content = cache_content.toString();
+				    	if(!json_content.isEmpty()) {
+							Item item = mapper.readValue(json_content, Item.class);
+							insertRecord(item);
+				    	}
 				    	numRecordsProcessed++;
 				    	long timeElapsedInMili = (System.currentTimeMillis() - globalStartTime);
 				    	long globalTimeElapsed = TimeUnit.MILLISECONDS.toSeconds(timeElapsedInMili);
@@ -389,16 +436,18 @@ public class ItemSync implements Callable {
 				    	}						
 					} catch (JsonParseException e) {
 						// TODO Auto-generated catch block
-						//e.printStackTrace();
+						e.printStackTrace();
 						numMisses++;
 					} catch (JsonMappingException e) {
 						// TODO Auto-generated catch block
-						//e.printStackTrace();
+						e.printStackTrace();
 						numMisses++;
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 						numMisses++;
+					} catch(Exception e) {
+						e.printStackTrace();
 					}
 			    	//System.out.println(Thread.currentThread().getName() + ": end cache file parsing: " + (System.currentTimeMillis() - startTime));
 			    	//if(numRecordsProcessed % 100 == 0) {
@@ -438,64 +487,100 @@ public class ItemSync implements Callable {
 			statement.setInt(9, item.itemClass);
 			statement.setInt(10,  item.itemSubClass);
 			statement.setInt(11,  item.containerSlots);
-			statement.setInt(12, item.inventoryType);
-			statement.setBoolean(13,  item.equippable);
-			statement.setInt(14, item.itemLevel);
-			statement.setInt(15, item.maxCount);
-			statement.setInt(16, item.maxDurability);
-			statement.setInt(17, item.minFactionId);
-			statement.setInt(18,  item.minReputation);
-			statement.setInt(19, item.quality);
-			statement.setInt(20, item.sellPrice);
-			statement.setInt(21,  item.requiredSkill);
-			statement.setInt(22,  item.requiredLevel);
-			statement.setInt(23, item.requiredSkillRank);
-			statement.setInt(24, item.baseArmor);
-			statement.setBoolean(25, item.hasSockets);
-			statement.setBoolean(26,  item.isAuctionable);
-			statement.setInt(27,  item.armor);
-			statement.setInt(28,  item.displayInfoId);
-			statement.setString(29, item.nameDescription);
-			statement.setString(30,  item.nameDescriptionColor);
-			statement.setBoolean(31,  item.upgradable);
-			statement.setBoolean(32, item.heroicTooltip);
-			statement.setString(33,  item.context);
-			statement.setInt(34, item.artifactId);
+
+
+
+//			statement.setInt(12,  item.weaponInfo.damage.min);
+//			statement.setInt(13, item.weaponInfo.damage.max);
+//			statement.setInt(14, item.weaponInfo.damage.exactMin);
+//			statement.setInt(15, item.weaponInfo.damage.exactMax);
+//			statement.setInt(16, item.weaponInfo.weaponSpeed);
+//			statement.setFloat(17, item.weaponInfo.dps);
+			statement.setInt(12,  0);
+			statement.setInt(13, 0);
+			statement.setInt(14, 0);
+			statement.setInt(15, 0);
+			statement.setInt(16, 0);
+			statement.setFloat(17, 0);
+			
+			
+
+			
+			statement.setInt(18, item.inventoryType);
+			statement.setBoolean(19,  item.equippable);
+			statement.setInt(20, item.itemLevel);
+			statement.setInt(21, item.maxCount);
+			statement.setInt(22, item.maxDurability);
+			statement.setInt(23, item.minFactionId);
+			statement.setInt(24,  item.minReputation);
+			statement.setInt(25, item.quality);
+			statement.setInt(26, item.sellPrice);
+			statement.setInt(27,  item.requiredSkill);
+			statement.setInt(28,  item.requiredLevel);
+			statement.setInt(29, item.requiredSkillRank);
+			statement.setInt(30, item.baseArmor);
+			statement.setBoolean(31, item.hasSockets);
+			statement.setBoolean(32,  item.isAuctionable);
+			statement.setInt(33,  item.armor);
+			statement.setInt(34,  item.displayInfoId);
+			statement.setString(35, item.nameDescription);
+			statement.setString(36,  item.nameDescriptionColor);
+			statement.setBoolean(37,  item.upgradable);
+			statement.setBoolean(38, item.heroicTooltip);
+			statement.setString(39,  item.context);
+			statement.setInt(40, item.artifactId);
 			
 			// Update
-			statement.setString(35,  item.name);
-			statement.setString(36, item.description);
-			statement.setString(37, "");
-			statement.setString(38, item.icon);
-			statement.setBoolean(39,  item.stackable);
-			statement.setBoolean(40, item.itemBind);
-			statement.setInt(41, item.buyPrice);
-			statement.setInt(42, item.itemClass);
-			statement.setInt(43,  item.itemSubClass);
-			statement.setInt(44,  item.containerSlots);
-			statement.setInt(45, item.inventoryType);
-			statement.setBoolean(46,  item.equippable);
-			statement.setInt(47, item.itemLevel);
-			statement.setInt(48, item.maxCount);
-			statement.setInt(49, item.maxDurability);
-			statement.setInt(50, item.minFactionId);
-			statement.setInt(51,  item.minReputation);
-			statement.setInt(52, item.quality);
-			statement.setInt(53, item.sellPrice);
-			statement.setInt(54,  item.requiredSkill);
-			statement.setInt(55,  item.requiredLevel);
-			statement.setInt(56, item.requiredSkillRank);
-			statement.setInt(57, item.baseArmor);
-			statement.setBoolean(58, item.hasSockets);
-			statement.setBoolean(59,  item.isAuctionable);
-			statement.setInt(60,  item.armor);
-			statement.setInt(61,  item.displayInfoId);
-			statement.setString(62, item.nameDescription);
-			statement.setString(63,  item.nameDescriptionColor);
-			statement.setBoolean(64,  item.upgradable);
-			statement.setBoolean(65, item.heroicTooltip);
-			statement.setString(66,  item.context);
-			statement.setInt(67, item.artifactId);
+			statement.setString(41,  item.name);
+			statement.setString(42, item.description);
+			statement.setString(43, "");
+			statement.setString(44, item.icon);
+			statement.setBoolean(45,  item.stackable);
+			statement.setBoolean(46, item.itemBind);
+			statement.setInt(47, item.buyPrice);
+			statement.setInt(48, item.itemClass);
+			statement.setInt(49,  item.itemSubClass);
+			statement.setInt(50,  item.containerSlots);
+			
+			
+//			statement.setInt(51,  item.weaponInfo.damage.min);
+//			statement.setInt(52, item.weaponInfo.damage.max);
+//			statement.setInt(53, item.weaponInfo.damage.exactMin);
+//			statement.setInt(54, item.weaponInfo.damage.exactMax);
+//			statement.setInt(55, item.weaponInfo.weaponSpeed);
+//			statement.setFloat(56, item.weaponInfo.dps);
+			statement.setInt(51, 0);
+			statement.setInt(52, 0);
+			statement.setInt(53, 0);
+			statement.setInt(54, 0);
+			statement.setInt(55, 0);
+			statement.setFloat(56, 0);			
+			
+			
+			
+			statement.setInt(57, item.inventoryType);
+			statement.setBoolean(58,  item.equippable);
+			statement.setInt(59, item.itemLevel);
+			statement.setInt(60, item.maxCount);
+			statement.setInt(61, item.maxDurability);
+			statement.setInt(62, item.minFactionId);
+			statement.setInt(63,  item.minReputation);
+			statement.setInt(64, item.quality);
+			statement.setInt(65, item.sellPrice);
+			statement.setInt(66,  item.requiredSkill);
+			statement.setInt(67,  item.requiredLevel);
+			statement.setInt(68, item.requiredSkillRank);
+			statement.setInt(69, item.baseArmor);
+			statement.setBoolean(70, item.hasSockets);
+			statement.setBoolean(71,  item.isAuctionable);
+			statement.setInt(72,  item.armor);
+			statement.setInt(73,  item.displayInfoId);
+			statement.setString(74, item.nameDescription);
+			statement.setString(75,  item.nameDescriptionColor);
+			statement.setBoolean(76,  item.upgradable);
+			statement.setBoolean(77, item.heroicTooltip);
+			statement.setString(78,  item.context);
+			statement.setInt(79, item.artifactId);
 
 			
 			int num_updated = statement.executeUpdate();

@@ -54,6 +54,7 @@ public class SyncManager {
 					}
 				}
 				
+				System.out.println("Waiting...");
 				Thread.sleep(TimeUnit.SECONDS.toMillis(1));
 			}
 			

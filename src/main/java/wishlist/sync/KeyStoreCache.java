@@ -82,6 +82,7 @@ public class KeyStoreCache {
 	}
 	
 	private boolean _checkAndReconnect() {
+		System.out.println(Thread.currentThread().getName() + " reconnecting if closed");
 		try {
 			if(_conn.isClosed()) {
 				//System.out.println("Connection is closed, reconnecting");
@@ -96,7 +97,7 @@ public class KeyStoreCache {
 	
 	public void put(Integer id, String content) {
 		long startTime = System.currentTimeMillis();
-
+		System.out.println(Thread.currentThread().getName() + " Locking DB in PUT");
 		try(DBLockClosable dblc = lockDB()) {
 		//try {
 			_checkAndReconnect();
@@ -110,14 +111,15 @@ public class KeyStoreCache {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.out.print("Not closing connection for some reason (1)");
 		}
 	}
 	
 	public String get(Integer id) {
 		//System.out.println("Getting something");
 		Long start_time = System.currentTimeMillis();
+		System.out.println(Thread.currentThread().getName() + " Locking DB in GET");
 		try(DBLockClosable dblc = lockDB()) {
-		//try {
 			_checkAndReconnect();
 			
 			Calendar cal = Calendar.getInstance();
@@ -153,10 +155,11 @@ public class KeyStoreCache {
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.out.print("Not closing connection for some reason (2)");
 		}
 
 		//System.out.println("Get Elapsed (out): " + (System.currentTimeMillis() - startTime));
-		System.out.println("Fail out");
+		System.out.println("Fail out - return null");
 		_globalTimeElapsedMili += System.currentTimeMillis() - start_time;
 		
 		return null;
