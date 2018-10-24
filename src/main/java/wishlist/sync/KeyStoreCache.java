@@ -82,7 +82,7 @@ public class KeyStoreCache {
 	}
 	
 	private boolean _checkAndReconnect() {
-		System.out.println(Thread.currentThread().getName() + " reconnecting if closed");
+		//System.out.println(Thread.currentThread().getName() + " reconnecting if closed");
 		try {
 			if(_conn.isClosed()) {
 				//System.out.println("Connection is closed, reconnecting");
@@ -97,7 +97,7 @@ public class KeyStoreCache {
 	
 	public void put(Integer id, String content) {
 		long startTime = System.currentTimeMillis();
-		System.out.println(Thread.currentThread().getName() + " Locking DB in PUT");
+		//System.out.println(Thread.currentThread().getName() + " Locking DB in PUT");
 		try(DBLockClosable dblc = lockDB()) {
 		//try {
 			_checkAndReconnect();
@@ -118,7 +118,7 @@ public class KeyStoreCache {
 	public String get(Integer id) {
 		//System.out.println("Getting something");
 		Long start_time = System.currentTimeMillis();
-		System.out.println(Thread.currentThread().getName() + " Locking DB in GET");
+		//System.out.println(Thread.currentThread().getName() + " Locking DB in GET");
 		try(DBLockClosable dblc = lockDB()) {
 			_checkAndReconnect();
 			

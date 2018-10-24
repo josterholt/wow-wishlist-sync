@@ -490,18 +490,18 @@ public class ItemSync implements Callable {
 
 
 
-//			statement.setInt(12,  item.weaponInfo.damage.min);
-//			statement.setInt(13, item.weaponInfo.damage.max);
-//			statement.setInt(14, item.weaponInfo.damage.exactMin);
-//			statement.setInt(15, item.weaponInfo.damage.exactMax);
-//			statement.setInt(16, item.weaponInfo.weaponSpeed);
-//			statement.setFloat(17, item.weaponInfo.dps);
-			statement.setInt(12,  0);
-			statement.setInt(13, 0);
-			statement.setInt(14, 0);
-			statement.setInt(15, 0);
-			statement.setInt(16, 0);
-			statement.setFloat(17, 0);
+			statement.setInt(12,  item.weaponInfo.damage.min);
+			statement.setInt(13, item.weaponInfo.damage.max);
+			statement.setInt(14, item.weaponInfo.damage.exactMin);
+			statement.setInt(15, item.weaponInfo.damage.exactMax);
+			statement.setInt(16, item.weaponInfo.weaponSpeed);
+			statement.setFloat(17, item.weaponInfo.dps);
+//			statement.setInt(12,  0);
+//			statement.setInt(13, 0);
+//			statement.setInt(14, 0);
+//			statement.setInt(15, 0);
+//			statement.setInt(16, 0);
+//			statement.setFloat(17, 0);
 			
 			
 
@@ -543,18 +543,18 @@ public class ItemSync implements Callable {
 			statement.setInt(50,  item.containerSlots);
 			
 			
-//			statement.setInt(51,  item.weaponInfo.damage.min);
-//			statement.setInt(52, item.weaponInfo.damage.max);
-//			statement.setInt(53, item.weaponInfo.damage.exactMin);
-//			statement.setInt(54, item.weaponInfo.damage.exactMax);
-//			statement.setInt(55, item.weaponInfo.weaponSpeed);
-//			statement.setFloat(56, item.weaponInfo.dps);
-			statement.setInt(51, 0);
-			statement.setInt(52, 0);
-			statement.setInt(53, 0);
-			statement.setInt(54, 0);
-			statement.setInt(55, 0);
-			statement.setFloat(56, 0);			
+			statement.setInt(51,  item.weaponInfo.damage.min);
+			statement.setInt(52, item.weaponInfo.damage.max);
+			statement.setInt(53, item.weaponInfo.damage.exactMin);
+			statement.setInt(54, item.weaponInfo.damage.exactMax);
+			statement.setInt(55, item.weaponInfo.weaponSpeed);
+			statement.setFloat(56, item.weaponInfo.dps);
+//			statement.setInt(51, 0);
+//			statement.setInt(52, 0);
+//			statement.setInt(53, 0);
+//			statement.setInt(54, 0);
+//			statement.setInt(55, 0);
+//			statement.setFloat(56, 0);			
 			
 			
 			
