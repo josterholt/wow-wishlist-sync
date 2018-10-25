@@ -8,7 +8,7 @@ import wishlist.sync.ItemSync;
 
 
 /**
- * Hello world!
+ * Entry point for sync script
  *
  */
 public class App 
@@ -16,10 +16,10 @@ public class App
 	
     public static void main( String[] args ) throws InterruptedException
     {
-    	System.out.println(new Date());
+    	System.out.println(new Date()); // Start timestamp
     	SyncManager manager = new SyncManager();
     	manager.RunSync();
-    	System.out.println(new Date());
+    	System.out.println(new Date()); // End timestamp
     }
     
 

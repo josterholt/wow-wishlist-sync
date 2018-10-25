@@ -11,39 +11,53 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
+/**
+ * SynManager has three stages; init, execution, cleanup.
+ * init - Initializes ItemSync static members, runs multiple instances of ItemSync through threads
+ * execution - Runs callable instances
+ * cleanup - Cleans up threads
+ * 
+ * @author Justin Osterholt
+ */
 public class SyncManager {
 	RequestLimitManager limitManager;
 	
-	public void RunSync() {
-		System.out.println("RunSync");
-		
-		// Thread initialization
+	public void RunSync() {	
+		/**
+		 * INIT STAGE: Setup threading and sync environment/variables.
+		 * numThreads - Number of sync threads to spin up in relation to number or CPU cores
+		 * RequestLimitManager - Add rate limits so this app respects external endpoint limits
+		 * ItemSync Static Variables - Set start ID and max record ID (we don't know the external max record ID)
+		 */
+		// Define the number of threads used in numThreads. Initialize threads based on CPU cores.
 		Integer numThreads = Runtime.getRuntime().availableProcessors() + 1;
-		System.out.println("Num Threads: " + numThreads.toString());
-		
 		ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+		System.out.println("Num Threads: " + numThreads.toString());	
 		
-		// Initialize global vars
-		AtomicInteger id = new AtomicInteger(0);
+		// Set rate limits so sync will pause and avoid errors
 		RequestLimitManager.addLimit(new Limit(TimeUnit.SECONDS.toNanos(1), 100));
 		RequestLimitManager.addLimit(new Limit(TimeUnit.HOURS.toNanos(1), 36000));
-		
-		
+
 		// Initialize start time for request limits
 		ItemSync.initialize();
-		ItemSync.setStartId(0);
-		ItemSync.setMaxRecords(200000); // Shouldn't need to do this
-		
+		ItemSync.setMaxRecords(200000); // @todo Detect the end of valid IDs if possible
+
+		// Add callable instance to list so they can be managed during execution phase
 		ArrayList<Callable<ItemSync>> tasks = new ArrayList<Callable<ItemSync>>();
 		for(int i = 0; i < numThreads; i++) {
-			System.out.println("Adding thread");
-			//executor.execute(new ItemSync());
 			tasks.add(new ItemSync());
 		}
-				
+
+
+		/**
+		 * EXECUTION STAGE: Start all sync threads, loop until all threads are finished.
+		 * Sleeps at end of check so we aren't hammering the CPU.
+		 */
 		try {
+			// Start callables for every ItemSync instance
 			List<Future<ItemSync>> futures = executor.invokeAll(tasks);
 
+			// Main loop, checks state of thread (future)
 			boolean loop = true;
 			while(loop) {
 				loop = false;
@@ -63,7 +77,10 @@ public class SyncManager {
 			e.printStackTrace();
 		}
 				
-			
+
+		/**
+		 * CLEAN UP STAGE: Threads are done running, clean up
+		 */
 		System.out.println("Shutting down threads");
 		executor.shutdown();
 		while(!executor.isTerminated()) {

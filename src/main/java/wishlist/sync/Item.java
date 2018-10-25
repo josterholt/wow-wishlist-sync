@@ -50,12 +50,6 @@ public class Item {
 	
 	//@JsonIgnore
 	public WeaponInfo weaponInfo;
-//	public Integer weaponinfoDamageMin;
-//	public Integer weaponinfoDamageMax;
-//	public Integer weaponinfoDamageExactMin;
-//	public Integer weaponinfoDamageExactMax;
-//	public Integer weaponinfoWeaponSpeed;
-//	public Float weaponinfoDPS;
 	public Integer inventoryType;
 	public Boolean equippable;
 	public Integer itemLevel;

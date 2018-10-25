@@ -39,18 +39,33 @@ import com.mysql.cj.api.mysqla.result.Resultset;
 
 import wishlist.sync.Item;
 
+/**
+ * Fetches and stores World of Warcraft Item data from the Battle.net WoW RESTful API.
+ * 
+ * CONFIG SETUP: SQLite location and mySQL credentails are requested if property file doesn't exist. Property
+ * file is located in home directory and named .wowsync.
+ * 
+ * NOTE ON AVAILABLE IDS: We don't have information on what IDs are available upfront, which means that we
+ * need to discover those by checking each ID incrementally. This also means we don't know the last ID.
+ * 
+ * CONNECTIONS: Uses SQLite for cache (see KeyStoreCache) and mySQL for permanent storage. Each instance opens
+ * a connection to mySQL.
+ * 
+ */
 public class ItemSync implements Callable {
 	private static boolean _isInitialized = false;
 	private static AtomicInteger id = new AtomicInteger(0);
-	private static Integer _maxRecords = 36000;
+	private static Integer _maxRecords = 36000; // @todo consider setting this to public. It's not obvious this is overridden by constructor
 	private static String contentType = "item";
 	private static RequestLimitManager limitManager;
 	
-	private static String _cacheFolder;
-	private static String _cacheFilePathPattern;
-	private static Calendar _cacheFileExpiration;
+	private static String _cacheFolder; // Location SQLite database is stored 
 	
-	private Connection conn = null;
+	private Connection conn = null; // mySQL connection
+	
+	/**
+	 * Prepared SQL query used with mySQL storage
+	 */
 	private String sql = "INSERT INTO items ("
 			+ "name,"
 			+ "description,"
@@ -186,48 +201,11 @@ public class ItemSync implements Callable {
 	
 	private KeyStoreCache cache;
 	
-	
-	public ItemSync() {
-		try {
-			conn = DriverManager.getConnection("jdbc:mysql://" + config.getProperty("db_host", "localhost") + ":" + config.getProperty("db_port", "3306") + "/" + config.getProperty("db_name", "") + "?user=" + config.getProperty("db_user", "") + "&password=" + config.getProperty("db_password", "") + "&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
-			statement = conn.prepareStatement(sql);
-		} catch (SQLException e) {
-			System.out.println("Unable to connect");
-		}
-		
-		cache = new KeyStoreCache(_cacheFolder);
-	}
-	
-	@Override
-	public void finalize() {
-		cache.close();
-	}
-	
-	private static String promptWithQuestion(String question, String default_answer) {
-		String full_prompt;
-		if(default_answer != "" && default_answer != null) {
-			full_prompt = question + "(" + default_answer + "):";
-		} else {
-			full_prompt = question + ":";
-		}
-		
-		System.out.println(full_prompt);
-		
-		Scanner scannerName = new Scanner(System.in);
-		scannerName.useDelimiter(System.getProperty("line.separator"));
-		return scannerName.next();
-	}
-	
-	private static void setConfigFromPrompt(String key, String question, String default_answer) {
-		String answer = promptWithQuestion(question, default_answer);
-			
-		if(answer == "" || answer == null) {
-			config.setProperty(key, default_answer);
-		} else {
-			config.setProperty(key, answer);
-		}
-	}
-	
+
+	/*
+	 * STATIC METOD - Initializes config settings for property file, cache location, permanent storage credentials
+	 * Prompts user for settings if property file does not exist 
+	 */
 	public static void initialize() {
 		System.out.println(System.getProperty("user.home"));
 		File propertyFile = new File(System.getProperty("user.home") + "\\.wowsync");
@@ -265,14 +243,43 @@ public class ItemSync implements Callable {
 
 		_cacheFolder = config.getProperty("cacheDirectory");
 		File cacheFolder = new File(_cacheFolder);		
-		_cacheFilePathPattern = cacheFolder + "\\%1$s.json";
 		
 		initializeCacheFolder(cacheFolder);
-		
-		_cacheFileExpiration = Calendar.getInstance();
-		_cacheFileExpiration.add(Calendar.DATE, 7);
-
 	}
+	
+	/**
+	 * Helper function to prompt user with question and take answer. Returns answer as string
+	 * 
+	 * @param question	Question to prompt user with
+	 * @param default_answer	Default answer to display to user
+	 * @return string Input given by user (default_answer is not a fallback)
+	 */
+	private static String promptWithQuestion(String question, String default_answer) {
+		String full_prompt;
+		if(default_answer != "" && default_answer != null) {
+			full_prompt = question + "(" + default_answer + "):";
+		} else {
+			full_prompt = question + ":";
+		}
+		
+		System.out.println(full_prompt);
+		
+		Scanner scannerName = new Scanner(System.in);
+		scannerName.useDelimiter(System.getProperty("line.separator"));
+		return scannerName.next();
+	}
+	
+	private static void setConfigFromPrompt(String key, String question, String default_answer) {
+		String answer = promptWithQuestion(question, default_answer);
+			
+		if(answer == "" || answer == null) {
+			config.setProperty(key, default_answer);
+		} else {
+			config.setProperty(key, answer);
+		}
+	}
+	
+
 	
 	public static void setStartId(Integer StartId) {
 		id.set(StartId);
@@ -292,6 +299,23 @@ public class ItemSync implements Callable {
 
 	public static Integer getMaxRecords() {
 		return _maxRecords;
+	}	
+
+	
+	public ItemSync() {
+		try {
+			conn = DriverManager.getConnection("jdbc:mysql://" + config.getProperty("db_host", "localhost") + ":" + config.getProperty("db_port", "3306") + "/" + config.getProperty("db_name", "") + "?user=" + config.getProperty("db_user", "") + "&password=" + config.getProperty("db_password", "") + "&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
+			statement = conn.prepareStatement(sql);
+		} catch (SQLException e) {
+			System.out.println("Unable to connect");
+		}
+		
+		cache = new KeyStoreCache(_cacheFolder);
+	}
+	
+	@Override
+	public void finalize() {
+		cache.close();
 	}
 	   
     private String _readAll(Reader rd) throws IOException {
@@ -305,14 +329,6 @@ public class ItemSync implements Callable {
     
     private void _writeCache(Integer id, String content) {
 		cache.put(id, content);
-		/*
-    	Path file = Paths.get(String.format(_cacheFilePathPattern, id));
-    	try {
-    		Files.write(file, Arrays.asList(content), Charset.forName("UTF-8"));	
-    	} catch(IOException e) {
-    		e.printStackTrace();
-    	}
-    	*/
     }
     
     private void _checkLimit() {
@@ -488,23 +504,21 @@ public class ItemSync implements Callable {
 			statement.setInt(10,  item.itemSubClass);
 			statement.setInt(11,  item.containerSlots);
 
-
-
-			statement.setInt(12,  item.weaponInfo.damage.min);
-			statement.setInt(13, item.weaponInfo.damage.max);
-			statement.setInt(14, item.weaponInfo.damage.exactMin);
-			statement.setInt(15, item.weaponInfo.damage.exactMax);
-			statement.setInt(16, item.weaponInfo.weaponSpeed);
-			statement.setFloat(17, item.weaponInfo.dps);
-//			statement.setInt(12,  0);
-//			statement.setInt(13, 0);
-//			statement.setInt(14, 0);
-//			statement.setInt(15, 0);
-//			statement.setInt(16, 0);
-//			statement.setFloat(17, 0);
-			
-			
-
+			if(item.weaponInfo == null) {
+				statement.setInt(12, 0);
+				statement.setInt(13, 0);
+				statement.setInt(14, 0);
+				statement.setInt(15, 0);
+				statement.setInt(16, 0);
+				statement.setFloat(17, 0);				
+			} else {
+				statement.setInt(12, item.weaponInfo.damage.min);
+				statement.setInt(13, item.weaponInfo.damage.max);
+				statement.setInt(14, item.weaponInfo.damage.exactMin);
+				statement.setInt(15, item.weaponInfo.damage.exactMax);
+				statement.setInt(16, item.weaponInfo.weaponSpeed);
+				statement.setFloat(17, item.weaponInfo.dps);				
+			}
 			
 			statement.setInt(18, item.inventoryType);
 			statement.setBoolean(19,  item.equippable);
@@ -541,22 +555,23 @@ public class ItemSync implements Callable {
 			statement.setInt(48, item.itemClass);
 			statement.setInt(49,  item.itemSubClass);
 			statement.setInt(50,  item.containerSlots);
-			
-			
-			statement.setInt(51,  item.weaponInfo.damage.min);
-			statement.setInt(52, item.weaponInfo.damage.max);
-			statement.setInt(53, item.weaponInfo.damage.exactMin);
-			statement.setInt(54, item.weaponInfo.damage.exactMax);
-			statement.setInt(55, item.weaponInfo.weaponSpeed);
-			statement.setFloat(56, item.weaponInfo.dps);
-//			statement.setInt(51, 0);
-//			statement.setInt(52, 0);
-//			statement.setInt(53, 0);
-//			statement.setInt(54, 0);
-//			statement.setInt(55, 0);
-//			statement.setFloat(56, 0);			
-			
-			
+
+			if(item.weaponInfo == null) {
+				statement.setInt(51, 0);
+				statement.setInt(52, 0);
+				statement.setInt(53, 0);
+				statement.setInt(54, 0);
+				statement.setInt(55, 0);
+				statement.setFloat(56, 0);
+				
+			} else {
+				statement.setInt(51,  item.weaponInfo.damage.min);
+				statement.setInt(52, item.weaponInfo.damage.max);
+				statement.setInt(53, item.weaponInfo.damage.exactMin);
+				statement.setInt(54, item.weaponInfo.damage.exactMax);
+				statement.setInt(55, item.weaponInfo.weaponSpeed);
+				statement.setFloat(56, item.weaponInfo.dps);
+			}
 			
 			statement.setInt(57, item.inventoryType);
 			statement.setBoolean(58,  item.equippable);
