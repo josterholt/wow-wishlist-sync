@@ -302,6 +302,9 @@ public class ItemSync implements Callable {
 	}	
 
 	
+	/**
+	 * Initialize ItemSync, connect to mySQL database on construction
+	 */
 	public ItemSync() {
 		try {
 			conn = DriverManager.getConnection("jdbc:mysql://" + config.getProperty("db_host", "localhost") + ":" + config.getProperty("db_port", "3306") + "/" + config.getProperty("db_name", "") + "?user=" + config.getProperty("db_user", "") + "&password=" + config.getProperty("db_password", "") + "&useJDBCCompliantTimezoneShift=true&serverTimezone=PST");
@@ -313,11 +316,17 @@ public class ItemSync implements Callable {
 		cache = new KeyStoreCache(_cacheFolder);
 	}
 	
+	/**
+	 * Closes cache store
+	 */
 	@Override
 	public void finalize() {
 		cache.close();
 	}
-	   
+	 
+	/*
+	 * Helper method to pull stream data into string
+	 */
     private String _readAll(Reader rd) throws IOException {
     	StringBuilder sb = new StringBuilder();
     	int cp;
@@ -326,11 +335,19 @@ public class ItemSync implements Callable {
     	}
     	return sb.toString();
     }
-    
+
+    /**
+     * Adds content to cache database given id and content
+     * @param id	ID of external record
+     * @param content	JSON response returned by API endpoint
+     */
     private void _writeCache(Integer id, String content) {
 		cache.put(id, content);
     }
     
+    /**
+     * Enforces current thread to adhere to API rate limit. Sleeps if a wait duration is returned by LimitManager
+     */
     private void _checkLimit() {
 		Long sleep_duration;    	
 		sleep_duration = limitManager.incrementAndCheckWait();
@@ -346,6 +363,12 @@ public class ItemSync implements Callable {
 		}
     }
     
+    /**
+     * RESTful request to battle.net API to fetch item information.
+     * Makes HTTPS request, stores results into cache storage, and call method to store data into permanent storage
+     * 
+     * @param ItemId
+     */
     private void SyncItem(Integer ItemId) {
     	String url = "https://us.api.battle.net/wow/" + contentType + "/" + ItemId.toString() + "?apikey=***REMOVED***";
 
@@ -357,7 +380,6 @@ public class ItemSync implements Callable {
 			System.out.println(Thread.currentThread().getName() + ": Opening API URL");
 			long startTime = System.currentTimeMillis();
 			is = new URL(url).openStream();
-			//new URL(url).openConnection().getContent()
 
 			System.out.println(Thread.currentThread().getName() + ": Reading contents");
 	    	BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
@@ -399,7 +421,7 @@ public class ItemSync implements Callable {
 
     /**
      * Entry point for Callable
-     * Runs through IDs and adds to main database
+     * Runs through IDs and adds/updates data from external API to main database
      * If ID does not exist in cache, a fetch is made against Blizzard API, content is parsed and upserted into main database
      * If ID exists in cache, cached content is parsed and upserted into main database
      */
@@ -426,13 +448,14 @@ public class ItemSync implements Callable {
 				loop = false;
 			} else {
 				System.out.println(Thread.currentThread().getName() + ": Processing " + current_id);
+				
+				/**
+				 * Fetch cached data if it exists and hasn't expired, otherwise pull data from external API
+				 */
 				String cache_content = cache.get(current_id);
 				if(cache_content != null) {
-		    		//System.out.println(Thread.currentThread().getName() + ": " + current_id + " file is cached");
-		    		//System.out.println(Thread.currentThread().getName() + ": cache file " + current_id);
 		    		long startTime = System.currentTimeMillis();
 			    	try {
-			    		//System.out.println(cache_content.toString());
 				    	ObjectMapper mapper = new ObjectMapper();
 				    	String json_content = cache_content.toString();
 				    	if(!json_content.isEmpty()) {
@@ -444,8 +467,6 @@ public class ItemSync implements Callable {
 				    	long globalTimeElapsed = TimeUnit.MILLISECONDS.toSeconds(timeElapsedInMili);
 
 				    	if(globalTimeElapsed >= 60) {
-				    		//System.out.println("AVERAGE: " + (numRecordsProcessed / globalTimeElapsed) + "(" + numRecordsProcessed + "/" + numMisses + ")");
-				    		//System.out.println("Item Num: " + item.id);
 				    		globalStartTime = System.currentTimeMillis();
 				    		numRecordsProcessed = 0;
 				    		numMisses = 0;
@@ -464,11 +485,7 @@ public class ItemSync implements Callable {
 						numMisses++;
 					} catch(Exception e) {
 						e.printStackTrace();
-					}
-			    	//System.out.println(Thread.currentThread().getName() + ": end cache file parsing: " + (System.currentTimeMillis() - startTime));
-			    	//if(numRecordsProcessed % 100 == 0) {
-			    	//}
-		    		
+					}		    		
 		    	} else {
 					_checkLimit();		    		
 					System.out.println(Thread.currentThread().getName() + ": Sync ID " + current_id.toString());
@@ -489,6 +506,10 @@ public class ItemSync implements Callable {
 		return true;
 	}
 	
+	/**
+	 * Upsert item record in permanent database
+	 * @param item	Item PDO from JSON response
+	 */
 	private void insertRecord(Item item) {
 		try {
 			// Insert
