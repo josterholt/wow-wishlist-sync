@@ -370,7 +370,7 @@ public class ItemSync implements Callable {
      * @param ItemId
      */
     private void SyncItem(Integer ItemId) {
-    	String url = "https://us.api.battle.net/wow/" + contentType + "/" + ItemId.toString() + "?apikey=***REMOVED***";
+    	String url = "https://us.api.battle.net/wow/" + contentType + "/" + ItemId.toString() + "?apikey=[hardcoded API key]";
 
 		try {
 			/**
